@@ -2,22 +2,37 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Mini Geometry Dash</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    canvas {
+    html, body {
+      height: 100%;
       background: #222;
+      overflow: hidden;
+    }
+    canvas {
       display: block;
-      margin: 0 auto;
+      margin: auto;
+      background: #222;
+      touch-action: none; /* evita doble zoom en móviles */
     }
   </style>
 </head>
 <body>
-<canvas id="gameCanvas" width="800" height="400"></canvas>
+<canvas id="gameCanvas"></canvas>
 
 <script>
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
+
+// Ajustar tamaño del canvas al tamaño de pantalla
+function resizeCanvas() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
 
 // Juego
 let player = {
@@ -35,7 +50,7 @@ let obstacles = [];
 let frameCount = 0;
 let gameOver = false;
 
-// Entrada
+// Entrada - Teclado
 document.addEventListener('keydown', e => {
   if ((e.code === 'Space' || e.code === 'ArrowUp') && player.grounded && !gameOver) {
     player.velocityY = player.jumpStrength;
@@ -44,8 +59,17 @@ document.addEventListener('keydown', e => {
   if (gameOver && e.code === 'Enter') restartGame();
 });
 
+// Entrada - Pantalla táctil
+canvas.addEventListener('touchstart', () => {
+  if (player.grounded && !gameOver) {
+    player.velocityY = player.jumpStrength;
+    player.grounded = false;
+  }
+  if (gameOver) restartGame();
+});
+
 function restartGame() {
-  player.y = 300;
+  player.y = canvas.height - 50;
   player.velocityY = 0;
   obstacles = [];
   frameCount = 0;
@@ -105,8 +129,8 @@ function loop() {
     ) {
       gameOver = true;
       ctx.fillStyle = '#fff';
-      ctx.font = '30px Arial';
-      ctx.fillText('¡Game Over! Presiona ENTER', 200, 200);
+      ctx.font = '24px Arial';
+      ctx.fillText('¡Game Over! Toca para reiniciar', canvas.width / 2 - 150, canvas.height / 2);
     }
   }
 
