@@ -2,95 +2,22 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Mini Geometry Dash</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    html, body {
-      height: 100%;
-      background: #222;
-      overflow: hidden;
-      position: relative;
-      font-family: sans-serif;
-    }
     canvas {
-      display: block;
-      width: 100vw;
-      height: 100vh;
       background: #222;
-      touch-action: manipulation;
-    }
-    #jumpBtn, #restartBtn {
-      position: absolute;
-      bottom: 20px;
-      width: 100px;
-      height: 50px;
-      font-size: 16px;
-      border: none;
-      border-radius: 10px;
-      background-color: #0ff;
-      color: #000;
-      font-weight: bold;
-      z-index: 10;
-      opacity: 0.8;
-    }
-    #jumpBtn {
-      left: 20px;
-    }
-    #restartBtn {
-      right: 20px;
-      display: none;
-    }
-    #rotateWarning {
-      display: none;
-      position: fixed;
-      top: 0; left: 0;
-      width: 100vw;
-      height: 100vh;
-      background: #000;
-      color: white;
-      z-index: 9999;
-      font-size: 24px;
-      text-align: center;
-      padding-top: 40vh;
+      display: block;
+      margin: 0 auto;
     }
   </style>
 </head>
 <body>
-<div id="rotateWarning">🔄 Por favor gira tu dispositivo para jugar en horizontal</div>
-
-<canvas id="gameCanvas"></canvas>
-<button id="jumpBtn">SALTAR</button>
-<button id="restartBtn">REINICIAR</button>
+<canvas id="gameCanvas" width="800" height="400"></canvas>
 
 <script>
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
-const jumpBtn = document.getElementById('jumpBtn');
-const restartBtn = document.getElementById('restartBtn');
-const rotateWarning = document.getElementById('rotateWarning');
-
-function checkOrientation() {
-  if (window.innerWidth < window.innerHeight) {
-    rotateWarning.style.display = 'block';
-    canvas.style.display = 'none';
-    jumpBtn.style.display = 'none';
-    restartBtn.style.display = 'none';
-  } else {
-    rotateWarning.style.display = 'none';
-    canvas.style.display = 'block';
-    jumpBtn.style.display = 'block';
-    if (gameOver) restartBtn.style.display = 'block';
-    resizeCanvas();
-  }
-}
-window.addEventListener('resize', checkOrientation);
-checkOrientation();
-
-function resizeCanvas() {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-}
 
 // Juego
 let player = {
@@ -108,38 +35,32 @@ let obstacles = [];
 let frameCount = 0;
 let gameOver = false;
 
-function jump() {
-  if (player.grounded && !gameOver) {
+// Entrada
+document.addEventListener('keydown', e => {
+  if ((e.code === 'Space' || e.code === 'ArrowUp') && player.grounded && !gameOver) {
     player.velocityY = player.jumpStrength;
     player.grounded = false;
   }
-}
+  if (gameOver && e.code === 'Enter') restartGame();
+});
 
 function restartGame() {
-  player.y = canvas.height - 50;
+  player.y = 300;
   player.velocityY = 0;
   obstacles = [];
   frameCount = 0;
   gameOver = false;
-  restartBtn.style.display = 'none';
   loop();
 }
 
-document.addEventListener('keydown', e => {
-  if ((e.code === 'Space' || e.code === 'ArrowUp') && player.grounded && !gameOver) jump();
-  if (gameOver && e.code === 'Enter') restartGame();
-});
-jumpBtn.addEventListener('touchstart', jump);
-jumpBtn.addEventListener('click', jump);
-restartBtn.addEventListener('touchstart', restartGame);
-restartBtn.addEventListener('click', restartGame);
-
+// Bucle de juego
 function loop() {
   if (gameOver) return;
 
   requestAnimationFrame(loop);
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+  // Actualizar jugador
   player.velocityY += player.gravity;
   player.y += player.velocityY;
 
@@ -149,12 +70,15 @@ function loop() {
     player.grounded = true;
   }
 
+  // Dibujar suelo
   ctx.fillStyle = '#444';
   ctx.fillRect(0, canvas.height - 20, canvas.width, 20);
 
+  // Dibujar jugador
   ctx.fillStyle = '#0ff';
   ctx.fillRect(player.x, player.y, player.width, player.height);
 
+  // Crear obstáculos
   if (frameCount % 90 === 0) {
     let height = 40 + Math.random() * 60;
     obstacles.push({
@@ -165,12 +89,14 @@ function loop() {
     });
   }
 
+  // Dibujar y mover obstáculos
   ctx.fillStyle = '#f00';
   for (let i = 0; i < obstacles.length; i++) {
     const obs = obstacles[i];
     obs.x -= 5;
     ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
 
+    // Colisión
     if (
       player.x < obs.x + obs.width &&
       player.x + player.width > obs.x &&
@@ -179,12 +105,12 @@ function loop() {
     ) {
       gameOver = true;
       ctx.fillStyle = '#fff';
-      ctx.font = '24px Arial';
-      ctx.fillText('¡Game Over!', canvas.width / 2 - 70, canvas.height / 2);
-      restartBtn.style.display = 'block';
+      ctx.font = '30px Arial';
+      ctx.fillText('¡Game Over! Presiona ENTER', 200, 200);
     }
   }
 
+  // Eliminar obstáculos fuera de pantalla
   obstacles = obstacles.filter(obs => obs.x + obs.width > 0);
 
   frameCount++;
