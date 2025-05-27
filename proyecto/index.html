@@ -3,115 +3,91 @@
 <head>
   <meta charset="UTF-8">
   <title>Mini Geometry Dash</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    html, body {
-      width: 100vw;
-      height: 100vh;
-      overflow: hidden;
+    canvas {
       background: #222;
-    }
-    #gameCanvas {
       display: block;
       margin: 0 auto;
-      background: #222;
-      touch-action: none;
+      touch-action: manipulation; /* Mejora la respuesta táctil */
     }
-    #jumpBtn, #restartBtn {
-      position: fixed;
-      bottom: 30px;
-      left: 50%;
-      transform: translateX(-50%);
-      padding: 18px 40px;
-      font-size: 1.5em;
-      border: none;
-      border-radius: 12px;
-      background: #0ff;
-      color: #222;
-      font-weight: bold;
-      opacity: 0.85;
-      z-index: 10;
-      box-shadow: 0 2px 8px #0008;
+    #rotateMsg {
       display: none;
-    }
-    #restartBtn {
-      background: #f00;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: #111;
       color: #fff;
-      bottom: 90px;
+      z-index: 10;
+      justify-content: center;
+      align-items: center;
+      font-size: 2em;
+      text-align: center;
     }
   </style>
 </head>
 <body>
-<canvas id="gameCanvas"></canvas>
-<button id="jumpBtn">SALTAR</button>
-<button id="restartBtn">REINICIAR</button>
+<div id="rotateMsg">
+  Por favor, gira tu dispositivo para jugar en horizontal.
+</div>
+<canvas id="gameCanvas" width="800" height="400"></canvas>
+
 <script>
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
-const jumpBtn = document.getElementById('jumpBtn');
-const restartBtn = document.getElementById('restartBtn');
-
-// Ajustar canvas al tamaño de pantalla
-function resizeCanvas() {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-}
-window.addEventListener('resize', resizeCanvas);
-resizeCanvas();
 
 // Juego
 let player = {
   x: 50,
-  y: 0,
-  width: 40,
-  height: 40,
+  y: 300,
+  width: 30,
+  height: 30,
   velocityY: 0,
-  jumpStrength: -Math.max(14, canvas.height * -0.035),
-  gravity: Math.max(0.7, canvas.height * 0.0018),
+  jumpStrength: -12,
+  gravity: 0.6,
   grounded: false
 };
 
 let obstacles = [];
 let frameCount = 0;
 let gameOver = false;
+let score = 0;
+
+// Función para saltar
+function jump() {
+  if (player.grounded && !gameOver) {
+    player.velocityY = player.jumpStrength;
+    player.grounded = false;
+  }
+}
 
 // Entrada teclado
 document.addEventListener('keydown', e => {
-  if ((e.code === 'Space' || e.code === 'ArrowUp') && player.grounded && !gameOver) {
+  if ((e.code === 'Space' || e.code === 'ArrowUp')) {
     jump();
   }
   if (gameOver && e.code === 'Enter') restartGame();
 });
 
 // Entrada táctil
-jumpBtn.addEventListener('touchstart', e => {
-  e.preventDefault();
-  if (player.grounded && !gameOver) jump();
-});
-jumpBtn.addEventListener('click', e => {
-  if (player.grounded && !gameOver) jump();
-});
-restartBtn.addEventListener('touchstart', e => {
-  e.preventDefault();
-  if (gameOver) restartGame();
-});
-restartBtn.addEventListener('click', e => {
-  if (gameOver) restartGame();
-});
-
-function jump() {
-  player.velocityY = player.jumpStrength;
-  player.grounded = false;
-}
+canvas.addEventListener('touchstart', function(e) {
+  e.preventDefault(); // Evita el scroll en móviles
+  if (gameOver) {
+    restartGame();
+  } else {
+    jump();
+  }
+}, { passive: false });
 
 function restartGame() {
-  player.y = canvas.height - 20 - player.height;
+  player.y = 300;
   player.velocityY = 0;
   obstacles = [];
   frameCount = 0;
   gameOver = false;
-  restartBtn.style.display = 'none';
+  score = 0;
   loop();
 }
 
@@ -123,10 +99,8 @@ function loop() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   // Actualizar jugador
-  player.gravity = Math.max(0.7, canvas.height * 0.0018);
-  player.jumpStrength = -Math.max(14, canvas.height * 0.035);
-  player.y += player.velocityY;
   player.velocityY += player.gravity;
+  player.y += player.velocityY;
 
   if (player.y + player.height >= canvas.height - 20) {
     player.y = canvas.height - 20 - player.height;
@@ -143,13 +117,14 @@ function loop() {
   ctx.fillRect(player.x, player.y, player.width, player.height);
 
   // Crear obstáculos
-  if (frameCount % Math.floor(90 * (canvas.width / 800)) === 0) {
-    let height = 40 + Math.random() * (canvas.height * 0.15);
+  if (frameCount % 90 === 0) {
+    let height = 40 + Math.random() * 60;
     obstacles.push({
       x: canvas.width,
       y: canvas.height - 20 - height,
-      width: Math.max(20, canvas.width * 0.025),
-      height: height
+      width: 20,
+      height: height,
+      passed: false // Para la puntuación
     });
   }
 
@@ -157,8 +132,14 @@ function loop() {
   ctx.fillStyle = '#f00';
   for (let i = 0; i < obstacles.length; i++) {
     const obs = obstacles[i];
-    obs.x -= Math.max(5, canvas.width * 0.006);
+    obs.x -= 5;
     ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
+
+    // Sumar puntuación si el obstáculo pasa al jugador
+    if (!obs.passed && obs.x + obs.width < player.x) {
+      obs.passed = true;
+      score++;
+    }
 
     // Colisión
     if (
@@ -169,19 +150,41 @@ function loop() {
     ) {
       gameOver = true;
       ctx.fillStyle = '#fff';
-      ctx.font = 'bold ' + Math.floor(canvas.width/18) + 'px Arial';
-      ctx.fillText('¡Game Over!', canvas.width/2 - canvas.width/6, canvas.height/2);
-      restartBtn.style.display = 'block';
+      ctx.font = '30px Arial';
+      ctx.fillText('¡Game Over! Toca para reiniciar', 170, 200);
     }
   }
 
   // Eliminar obstáculos fuera de pantalla
   obstacles = obstacles.filter(obs => obs.x + obs.width > 0);
 
+  // Dibujar puntuación
+  ctx.fillStyle = '#fff';
+  ctx.font = '24px Arial';
+  ctx.fillText('Puntuación: ' + score, 20, 40);
+
   frameCount++;
-  jumpBtn.style.display = !gameOver ? 'block' : 'none';
 }
-restartGame();
+loop();
+
+// Mostrar mensaje de rotación en dispositivos móviles
+function checkOrientation() {
+  const rotateMsg = document.getElementById('rotateMsg');
+  // window.orientation está deprecado, mejor usar window.innerWidth/innerHeight
+  if (window.innerWidth < window.innerHeight) {
+    // Vertical
+    rotateMsg.style.display = 'flex';
+    canvas.style.display = 'none';
+  } else {
+    // Horizontal
+    rotateMsg.style.display = 'none';
+    canvas.style.display = 'block';
+  }
+}
+
+window.addEventListener('resize', checkOrientation);
+window.addEventListener('orientationchange', checkOrientation);
+checkOrientation();
 </script>
 </body>
 </html>
