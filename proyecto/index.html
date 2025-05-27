@@ -3,31 +3,72 @@
 <head>
   <meta charset="UTF-8">
   <title>Mini Geometry Dash</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    canvas {
+    html, body {
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
       background: #222;
+    }
+    #gameCanvas {
       display: block;
       margin: 0 auto;
+      background: #222;
+      touch-action: none;
+    }
+    #jumpBtn, #restartBtn {
+      position: fixed;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 18px 40px;
+      font-size: 1.5em;
+      border: none;
+      border-radius: 12px;
+      background: #0ff;
+      color: #222;
+      font-weight: bold;
+      opacity: 0.85;
+      z-index: 10;
+      box-shadow: 0 2px 8px #0008;
+      display: none;
+    }
+    #restartBtn {
+      background: #f00;
+      color: #fff;
+      bottom: 90px;
     }
   </style>
 </head>
 <body>
-<canvas id="gameCanvas" width="800" height="400"></canvas>
-
+<canvas id="gameCanvas"></canvas>
+<button id="jumpBtn">SALTAR</button>
+<button id="restartBtn">REINICIAR</button>
 <script>
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
+const jumpBtn = document.getElementById('jumpBtn');
+const restartBtn = document.getElementById('restartBtn');
+
+// Ajustar canvas al tamaño de pantalla
+function resizeCanvas() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
 
 // Juego
 let player = {
   x: 50,
-  y: 300,
-  width: 30,
-  height: 30,
+  y: 0,
+  width: 40,
+  height: 40,
   velocityY: 0,
-  jumpStrength: -12,
-  gravity: 0.6,
+  jumpStrength: -Math.max(14, canvas.height * -0.035),
+  gravity: Math.max(0.7, canvas.height * 0.0018),
   grounded: false
 };
 
@@ -35,21 +76,42 @@ let obstacles = [];
 let frameCount = 0;
 let gameOver = false;
 
-// Entrada
+// Entrada teclado
 document.addEventListener('keydown', e => {
   if ((e.code === 'Space' || e.code === 'ArrowUp') && player.grounded && !gameOver) {
-    player.velocityY = player.jumpStrength;
-    player.grounded = false;
+    jump();
   }
   if (gameOver && e.code === 'Enter') restartGame();
 });
 
+// Entrada táctil
+jumpBtn.addEventListener('touchstart', e => {
+  e.preventDefault();
+  if (player.grounded && !gameOver) jump();
+});
+jumpBtn.addEventListener('click', e => {
+  if (player.grounded && !gameOver) jump();
+});
+restartBtn.addEventListener('touchstart', e => {
+  e.preventDefault();
+  if (gameOver) restartGame();
+});
+restartBtn.addEventListener('click', e => {
+  if (gameOver) restartGame();
+});
+
+function jump() {
+  player.velocityY = player.jumpStrength;
+  player.grounded = false;
+}
+
 function restartGame() {
-  player.y = 300;
+  player.y = canvas.height - 20 - player.height;
   player.velocityY = 0;
   obstacles = [];
   frameCount = 0;
   gameOver = false;
+  restartBtn.style.display = 'none';
   loop();
 }
 
@@ -61,8 +123,10 @@ function loop() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   // Actualizar jugador
-  player.velocityY += player.gravity;
+  player.gravity = Math.max(0.7, canvas.height * 0.0018);
+  player.jumpStrength = -Math.max(14, canvas.height * 0.035);
   player.y += player.velocityY;
+  player.velocityY += player.gravity;
 
   if (player.y + player.height >= canvas.height - 20) {
     player.y = canvas.height - 20 - player.height;
@@ -79,12 +143,12 @@ function loop() {
   ctx.fillRect(player.x, player.y, player.width, player.height);
 
   // Crear obstáculos
-  if (frameCount % 90 === 0) {
-    let height = 40 + Math.random() * 60;
+  if (frameCount % Math.floor(90 * (canvas.width / 800)) === 0) {
+    let height = 40 + Math.random() * (canvas.height * 0.15);
     obstacles.push({
       x: canvas.width,
       y: canvas.height - 20 - height,
-      width: 20,
+      width: Math.max(20, canvas.width * 0.025),
       height: height
     });
   }
@@ -93,7 +157,7 @@ function loop() {
   ctx.fillStyle = '#f00';
   for (let i = 0; i < obstacles.length; i++) {
     const obs = obstacles[i];
-    obs.x -= 5;
+    obs.x -= Math.max(5, canvas.width * 0.006);
     ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
 
     // Colisión
@@ -105,8 +169,9 @@ function loop() {
     ) {
       gameOver = true;
       ctx.fillStyle = '#fff';
-      ctx.font = '30px Arial';
-      ctx.fillText('¡Game Over! Presiona ENTER', 200, 200);
+      ctx.font = 'bold ' + Math.floor(canvas.width/18) + 'px Arial';
+      ctx.fillText('¡Game Over!', canvas.width/2 - canvas.width/6, canvas.height/2);
+      restartBtn.style.display = 'block';
     }
   }
 
@@ -114,8 +179,9 @@ function loop() {
   obstacles = obstacles.filter(obs => obs.x + obs.width > 0);
 
   frameCount++;
+  jumpBtn.style.display = !gameOver ? 'block' : 'none';
 }
-loop();
+restartGame();
 </script>
 </body>
 </html>
